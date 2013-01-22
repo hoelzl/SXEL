@@ -3,6 +3,7 @@
 (require redex)
 (require "sxel.poem")
 
+;;; This should probably be fluid let, but that's rather inconvenient.
 (caching-enabled? #f)
 
 ;;; Tests for the SXEL Syntax
@@ -222,39 +223,41 @@
 		(P α)
 		((comp
 		  (pre (get (p1 X) n) (pre (put (p1 123) n) nil))
-		  (pre (get (p1 234) n) nil))
-		 (comp ○ (qry (p1 X) n)))
+		  (pre (qry (p1 X) n) (pre (get (p1 234) n) nil)))
+		 ○)
 		((comp
 		  (pre (get (p1 X) n) (pre (put (p1 123) n) nil))
 		  (pre (qry (p1 X) n) (pre (get (p1 234) n) nil)))
 		 (comp ○ ○))
 		((comp
 		  (pre (get (p1 X) n) (pre (put (p1 123) n) nil))
-		  (pre (qry (p1 X) n) (pre (get (p1 234) n) nil)))
-		 ○)
-		((comp (pre (put (p1 123) n) nil) (pre (get (p1 234) n) nil))
-		 (comp (get (p1 X) n) (qry (p1 X) n)))
+		  (pre (get (p1 234) n) nil))
+		 (comp ○ (qry (p1 X) n)))
 		((comp
 		  (pre (put (p1 123) n) nil)
 		  (pre (qry (p1 X) n) (pre (get (p1 234) n) nil)))
-		 (comp (get (p1 X) n) ○)))
+		 (comp (get (p1 X) n) ○))	
+		((comp (pre (put (p1 123) n) nil) (pre (get (p1 234) n) nil))
+		 (comp (get (p1 X) n) (qry (p1 X) n))))
 
 (test-judgement (↓ (comp (pre (get (p1 ?X) n) (pre (put (p1 123) n) nil))
 			 (pre (qry (p1 ?X) n) (pre (get (p1 234) n) nil))) P α)
 		(P α)
+		((comp
+		  (pre (get (p1 ?X) n) (pre (put (p1 123) n) nil))
+		  (pre (qry (p1 ?X) n) (pre (get (p1 234) n) nil)))
+		 ○)
+		((comp
+		  (pre (get (p1 ?X) n) (pre (put (p1 123) n) nil))
+		  (pre (qry (p1 ?X) n) (pre (get (p1 234) n) nil)))
+		 (comp ○ ○))
 		((comp 
 		  (pre (get (p1 ?X) n) (pre (put (p1 123) n) nil))
 		  (pre (get (p1 234) n) nil))
 		 (comp ○ (qry (p1 ?X) n)))
 		((comp
-		  (pre (get (p1 ?X) n) (pre (put (p1 123) n) nil))
-		  (pre (qry (p1 ?X) n) (pre (get (p1 234) n) nil)))
-		 (comp ○ ○))
-		((comp
-		  (pre (get (p1 ?X) n) (pre (put (p1 123) n) nil))
-		  (pre (qry (p1 ?X) n) (pre (get (p1 234) n) nil)))
-		 ○)
-		((comp
 		  (pre (put (p1 123) n) nil)
 		  (pre (qry (p1 ?X) n) (pre (get (p1 234) n) nil)))
 		 (comp (get (p1 ?X) n) ○)))
+
+(display "All tests completed.\n")

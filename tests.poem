@@ -97,6 +97,57 @@
 (test-match α (comp (new J () Π_1 (pre (put (X) (ref I id)) nil)) ○))
 (test-failed-match α (some random list))
 
+;;; Tests for the template functions
+;;; ================================
+
+(test-equal
+ (template-vars '()) '())
+(test-equal
+ (template-vars '(x)) '())
+(test-equal
+ (template-vars '(?x)) '(?x))
+(test-equal
+ (template-vars '(a ?b c ?d)) '(?b ?d))
+(test-equal
+ (template-vars '((?x y z) a ?z))
+ '(?x ?z))
+
+
+;;; Tests for `template-var->sxel-var' and `sxel-vars-from-template'
+;;; ================================================================
+
+(test-equal
+ (template-var->sxel-var '?x) 'x)
+
+(test-equal
+ (template-var->sxel-var '?X) 'X)
+
+(test-equal
+ (sxel-vars-from-template '())
+ '())
+
+(test-equal
+ (sxel-vars-from-template '((?x y z) a ?z))
+ '(x z))
+
+;;; Tests for `bv'
+;;; ==============
+
+(test-equal
+ (term (bv nil))
+ '())
+
+(test-equal
+ (term (bv (get (?x ?Y z) nil)))
+ '(x Y))
+
+(test-equal
+ (term (bv (pre (get (?x ?Y z) n) nil)))
+ '(x Y))
+
+(test-equal
+ (term (bv (pre (get (?x ?Y z) n) (pre (get (x1 Y1 ?z1) n) nil))))
+ '(x Y z1))
 
 ;;; Tests for the `proc' Judgement Form
 ;;; ===================================
@@ -173,3 +224,25 @@
 		  (pre (put (p1 123) n) nil)
 		  (pre (qry (p1 X) n) (pre (get (p1 234) n) nil)))
 		 (comp (get (p1 X) n) ○)))
+
+(test-judgement (proc (comp (pre (get (p1 ?X) n) (pre (put (p1 123) n) nil))
+			    (pre (qry (p1 ?X) n) (pre (get (p1 234) n) nil))) P α)
+		(P α)
+		((comp 
+		  (pre (get (p1 ?X) n) (pre (put (p1 123) n) nil))
+		  (pre (get (p1 234) n) nil))
+		 (comp ○ (qry (p1 ?X) n)))
+		((comp
+		  (pre (get (p1 ?X) n) (pre (put (p1 123) n) nil))
+		  (pre (qry (p1 ?X) n) (pre (get (p1 234) n) nil)))
+		 (comp ○ ○))
+		((comp
+		  (pre (get (p1 ?X) n) (pre (put (p1 123) n) nil))
+		  (pre (qry (p1 ?X) n) (pre (get (p1 234) n) nil)))
+		 ○)
+		((comp (pre (put (p1 123) n) nil) (pre (get (p1 234) n) nil))
+		 (comp (get (p1 ?X) n) (qry (p1 ?X) n)))
+		((comp
+		  (pre (put (p1 123) n) nil)
+		  (pre (qry (p1 ?X) n) (pre (get (p1 234) n) nil)))
+		 (comp (get (p1 ?X) n) ○)))

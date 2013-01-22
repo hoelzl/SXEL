@@ -1,7 +1,12 @@
 #lang poem
 
 (require redex)
-(provide sxel proc)
+
+(provide sxel 
+	 template-vars template-var->sxel-var sxel-vars-from-template
+	 subst subst-var subst-vars
+	 bv
+	 proc)
 
 (define-language sxel
   ;; Processes
@@ -32,6 +37,82 @@
   ;; Commitments (not terms, but used by the semantics)
   (α β ::= a ○ (comp α β)))
 
+;;; Return the list of all template variables (i.e., symbols starting
+;;; with a question mark) appearing in `template'.
+;;;
+(defgeneric template-vars (template))
+
+(defmethod template-vars ((template <list>))
+  (if (null? template)
+      '()
+      (let ((elt (first template)))
+	(if (symbol? elt)
+	    (let ((name (symbol->string elt)))
+	      (if (and (> (string-length name) 0)
+		       (equal? (string-ref name 0) #\?))
+		  (cons elt (template-vars (rest template)))
+		  (template-vars (rest template))))
+	    (append (template-vars elt) (template-vars (rest template)))))))
+
+(define (template-var->sxel-var var)
+  (string->symbol (substring (symbol->string var) 1)))
+
+(define (sxel-vars-from-template template)
+  (map template-var->sxel-var (template-vars template)))
+
+(define-metafunction sxel
+  ((bv (pre a_1 P_1))
+   ,(append (term (bv a_1)) (term (bv P_1))))
+  ((bv (get T_1 c_1))
+   ,(append (sxel-vars-from-template (term T_1))
+	    (term (bv c_1))))
+  ((bv (qry T_1 c_1))
+   ,(append (sxel-vars-from-template (term T_1))
+	    (term (bv c_1))))
+  ((bv any) ()))
+
+(define-metafunction sxel
+   ((subst ((pre (get T_1 c_1) P_1)) X_1 any_1)
+    ((pre (get T_1 c_1) P_1))
+    (side-condition
+     (member (term X_1) (sxel-vars-from-template (term T_1)))))
+   ((subst (pre (get T_1 c) P_1) X_1 any_1)
+    (pre (pre (get (subst-var T_1 X_1 X_3) c)
+	      (subst (subst-var P_1 X_1 X_3) X_1 any_1)))
+    (side-condition
+     (not (member (term X_1) (sxel-vars-from-template (term T_1)))))
+    (where X_3 ,(variable-not-in (term (T_1 c P_1 any_1)) (term X_1))))
+   ((subst X_1 X_1 any_2)
+    any_2)
+   ((subst (any_1 ...) X_2 any_2)
+    ((subst any_1 X_2 any_2) ...))
+   ((subst any_1 X_2 any_2) any_1))
+
+(define-metafunction sxel
+  #;
+  ((subst-vars (any_1 ...) (variable_1 ..._1) (variable_2 ..._1))
+   ((subst-vars any_1 (variable_1 ..._1) (variable_2 ..._1)) ...))
+  ((subst-vars any1 () ()) any_1)
+  ((subst-vars any_1  (variable_1 variable_2 ..._1) (variable_3 variable_4 ..._1))
+   (subst-vars (subst-var any_1 variable_1 variable_3)
+	       (variable_2 ...) (variable_4 ...))))
+
+(define-metafunction sxel
+  ((subst-var (any_1 ...) variable_1 variable_2)
+   ((subst-var any_1 variable_1 variable_2) ...))
+  ((subst-var variable_1 variable_1 variable_2) variable_2)
+  ((subst-var any_1 variable_1 variable_2) any_1))
+
+(define (intersection lhs rhs)
+  (if (or (null? lhs) (null? rhs))
+      '()
+      (filter (lambda (elt)
+		(member elt rhs))
+	      lhs)))
+
+(define-metafunction sxel
+  ;; BUG: Just for testing
+  ((no-shared-bound-variables α β) #f))
 
 (define-judgment-form sxel
   #:mode (proc I O O)
@@ -51,5 +132,8 @@
   ;; Substitution is still missing, therefore no A(...)
 
   ((proc P_1 P_2 α) (proc Q_1 Q_2 β)
+   ;; This side condition is never activated?
+   (side-condition (begin (display "Evaluating side condition")
+			  (null? (intersection α β))))
    ----------------------------------------------   comp
    (proc (comp P_1 Q_1) (comp P_2 Q_2) (comp α β))))

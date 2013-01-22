@@ -3,6 +3,8 @@
 (require redex)
 (require "sxel.poem")
 
+(caching-enabled? #f)
+
 ;;; Tests for the SXEL Syntax
 ;;; =========================
 
@@ -130,8 +132,8 @@
  (sxel-vars-from-template '((?x y z) a ?z))
  '(x z))
 
-;;; Tests for `bv'
-;;; ==============
+;;; Tests for `bv' and `no-shared-bound-variables'
+;;; ==============================================
 
 (test-equal
  (term (bv nil))
@@ -148,6 +150,18 @@
 (test-equal
  (term (bv (pre (get (?x ?Y z) n) (pre (get (x1 Y1 ?z1) n) nil))))
  '(x Y z1))
+
+(test-equal
+ (term (no-shared-bound-variables (get (p1 ?X) n) (qry (p1 ?X) n)))
+ #f)
+
+(test-equal
+ (term (no-shared-bound-variables (get (p1 ?X ?Y) n) (qry (p1 ?Z ?X) n)))
+ #f)
+
+(test-equal
+ (term (no-shared-bound-variables (get (p1 ?X) n) (qry (p1 ?Y) n)))
+ #t)
 
 ;;; Tests for the `↓' Judgement Form
 ;;; ===================================
@@ -240,8 +254,6 @@
 		  (pre (get (p1 ?X) n) (pre (put (p1 123) n) nil))
 		  (pre (qry (p1 ?X) n) (pre (get (p1 234) n) nil)))
 		 ○)
-		((comp (pre (put (p1 123) n) nil) (pre (get (p1 234) n) nil))
-		 (comp (get (p1 ?X) n) (qry (p1 ?X) n)))
 		((comp
 		  (pre (put (p1 123) n) nil)
 		  (pre (qry (p1 ?X) n) (pre (get (p1 234) n) nil)))

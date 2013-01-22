@@ -5,7 +5,7 @@
 (provide sxel 
 	 template-vars template-var->sxel-var sxel-vars-from-template
 	 subst subst-var subst-vars
-	 bv
+	 bv no-shared-bound-variables
 	 ↓)
 
 (define-language sxel
@@ -89,11 +89,8 @@
    ((subst any_1 X_2 any_2) any_1))
 
 (define-metafunction sxel
-  #;
-  ((subst-vars (any_1 ...) (variable_1 ..._1) (variable_2 ..._1))
-   ((subst-vars any_1 (variable_1 ..._1) (variable_2 ..._1)) ...))
   ((subst-vars any1 () ()) any_1)
-  ((subst-vars any_1  (variable_1 variable_2 ..._1) (variable_3 variable_4 ..._1))
+  ((subst-vars any_1 (variable_1 variable_2 ..._1) (variable_3 variable_4 ..._1))
    (subst-vars (subst-var any_1 variable_1 variable_3)
 	       (variable_2 ...) (variable_4 ...))))
 
@@ -111,8 +108,13 @@
 	      lhs)))
 
 (define-metafunction sxel
-  ;; BUG: Just for testing
-  ((no-shared-bound-variables α β) #f))
+  ((no-shared-bound-variables α β) 
+   #t
+   (side-condition (null? (intersection (term (bv α)) (term (bv β))))))
+  ((no-shared-bound-variables α β) 
+   #f)
+  ((no-shared-bound-variables any_1 any_2) 
+   #t))
 
 (define-judgment-form sxel
   #:mode (↓ I O O)
@@ -132,7 +134,6 @@
   ;; Substitution is still missing, therefore no A(...)
 
   ((↓ P_1 P_2 α) (↓ Q_1 Q_2 β)
-   ;; This side condition is never activated?
    (side-condition (no-shared-bound-variables α β))
    ----------------------------------------------   comp
    (↓ (comp P_1 Q_1) (comp P_2 Q_2) (comp α β))))

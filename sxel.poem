@@ -1,0 +1,217 @@
+#lang poem
+
+(require redex)
+
+(define-language sxel
+  ;; Processes
+  (P Q ::= nil (pre a P) (+ P_1 P_2) (comp P_1 P_2) X (A any ...))
+  ;; Names for processes
+  (A   ::= (variable-prefix A))
+  ;; Actions
+  (a   ::= (get T c) (qry T c) (put t c) (fresh n) (new I K Π P))
+  ;; Targets (references to knowledge repositories)
+  (c   ::= n x self P (ref I variable))
+  ;; Templates
+  (T   ::= (any any ...))
+  ;; Tuples
+  (t   ::= (any any ...))
+  ;; Interface names
+  (I   ::= (variable-prefix I) (variable-prefix J))
+  ;; Knowledge repositories
+  (K   ::= (any ...))
+  ;; Policies
+  (Π   ::= (variable-prefix Π))
+  ;; Names
+  (n   ::= (variable-prefix n))
+  ;; Process variables
+  (X   ::= (variable-prefix X) (variable-prefix Y) (variable-prefix Z))
+  ;; Variables for names
+  (x   ::= (variable-prefix x) (variable-prefix y) (variable-prefix z))
+
+  ;; Commitments (not terms, but used by the semantics)
+  (α β ::= a ○ (comp α β)))
+
+(define-syntax-rule (test-match nonterminal term-exp)
+  (if (redex-match? sxel nonterminal (term term-exp))
+   (let* ((m (redex-match sxel nonterminal (term term-exp)))
+	  (b (match-bindings (first m))))
+     (test-equal (length b) 1)
+     (test-equal (bind-exp (first b)) 'term-exp))
+   ;; Generate an error message
+   (test-equal 'term-exp 'no-match-found)))
+
+(define-syntax-rule (test-failed-match nonterminal term-exp)
+  (test-equal (redex-match? sxel nonterminal (term term-exp)) #f))
+
+(test-match x x)
+(test-match x y-with-description)
+(test-match x z_1_with_some_more_information_appended)
+(test-failed-match x X)
+(test-failed-match x foo)
+
+(test-match X X)
+(test-match X Y-with-description)
+(test-match X Z_1_with_some_more_information_appended)
+(test-failed-match X x)
+(test-failed-match X foo)
+
+(test-match n n)
+(test-match n n_1)
+(test-failed-match n N)
+(test-failed-match n p)
+
+(test-match Π Π)
+(test-match Π Π_1)
+(test-match Π Π-my-policy)
+(test-failed-match Π foo)
+
+(test-match K ())
+(test-match K ((a tuple containing numbers and symbols 1 2 3)))
+(test-failed-match K nil)
+
+(test-match I I)
+(test-match I I_1)
+(test-match I J)
+(test-match I J_1)
+(test-failed-match I K)
+
+(test-match T (1 2 3))
+(test-match T (a))
+(test-failed-match T ())
+(test-failed-match T nil)
+
+(test-match t (a b c))
+(test-match t (1))
+(test-failed-match t ())
+(test-failed-match t nil)
+
+(test-match c n)
+(test-match c x)
+(test-match c y_1)
+(test-match c nil)
+(test-match c (+ nil nil))
+(test-match c (ref I id))
+(test-match c (ref I π))
+
+(test-match a (get (X Y 1 z) n_1))
+(test-match a (qry (X_1 Y_1) zzz))
+(test-match a (put (X) (ref I foo)))
+(test-match a (fresh n_1))
+(test-match a (new J () Π_1 nil))
+(test-failed-match a (some random list))
+
+(test-match P nil)
+(test-match P (pre (get (my-id X) n) nil))
+(test-match P (pre (get (my-id X) n) (pre (put (my-id 123) n) nil)))
+(test-match P (+ (pre (get (my-id X) n1) nil)
+		 (pre (qry (my-other-id X) n2) nil)))
+(test-match P (comp (pre (get (my-id X) n1) nil)
+		    (pre (qry (my-other-id X) n2) nil)))
+(test-match P (A 1 2 3))
+(test-failed-match P I)
+
+(test-match α (get (X Y 1 z) n_1))
+(test-match α (qry (X_1 Y_1) zzz))
+(test-match α (put (X) (ref I foo)))
+(test-match α (fresh n_1))
+(test-match α (new J () Π_1 nil))
+(test-match α ○)
+(test-match α (comp ○ ○))
+(test-match α (comp ○ (get (X Y 1 z) n_1)))
+(test-match α (comp (new J () Π_1 nil) ○))
+(test-match α (comp (new J () Π_1 (pre (put (X) (ref I id)) nil)) ○))
+(test-failed-match α (some random list))
+
+(define-judgment-form sxel
+  #:mode (proc I O O)
+  #:contract (proc P P α)
+  ((proc (pre a P) P a)    prefix)
+
+  ((proc P P ○)    no-op)
+
+  ((proc P_1 P_2 α)
+   -----------------------    +-left
+   (proc (+ P_1 Q) P_2 α))
+
+  ((proc Q_1 Q_2 α)
+   -----------------------   --left
+   (proc (+ P Q_1) Q_2 α))
+
+  ;; Substitution is still missing, therefore no A(...)
+
+  ((proc P_1 P_2 α) (proc Q_1 Q_2 β)
+   ----------------------------------------------   comp
+   (proc (comp P_1 Q_1) (comp P_2 Q_2) (comp α β))))
+
+(test-equal
+ (judgment-holds
+  (proc nil P α)
+  (P α))
+ '((nil ○)))
+
+(define-syntax test-judgement
+  (syntax-rules ()
+    ((_ test-form value-form expected ...)
+     (let ((result (judgment-holds test-form value-form)))
+       (test-equal (length result) (length '(expected ...)))
+       (for-each (lambda (exp)
+		   (test-predicate
+		    (lambda (exp)
+		      (member exp result))
+		    exp))
+		 '(expected ...))))))
+
+(require racket/pretty)
+(define-syntax print-judgement
+  (syntax-rules ()
+    ((_ test-form value-form)
+     (let ((result (judgment-holds test-form value-form)))
+       (pretty-display result) (newline)))))
+
+(test-judgement (proc (pre (get (X) n) nil) P α) 
+		(P α)
+		((pre (get (X) n) nil) ○)
+		(nil (get (X) n)))
+
+
+(test-judgement (proc (+ (pre (get (p1 X) n) nil)
+			  (pre (get (p2 X) n) nil)) P α) 
+		(P α)
+		((+ (pre (get (p1 X) n) nil)
+		    (pre (get (p2 X) n) nil)) ○)
+		((pre (get (p1 X) n) nil) ○)
+		((pre (get (p2 X) n) nil) ○)
+		(nil (get (p1 X) n))
+		(nil (get (p2 X) n)))
+
+(test-judgement (proc (comp (pre (get (p1 X) n) nil)
+			    (pre (get (p2 X) n) nil)) P α) 
+		(P α)
+		((comp (pre (get (p1 X) n) nil) (pre (get (p2 X) n) nil)) (comp ○ ○))
+		((comp (pre (get (p1 X) n) nil) (pre (get (p2 X) n) nil)) ○)
+		((comp (pre (get (p1 X) n) nil) nil) (comp ○ (get (p2 X) n)))
+		((comp nil (pre (get (p2 X) n) nil)) (comp (get (p1 X) n) ○))
+		((comp nil nil) (comp (get (p1 X) n) (get (p2 X) n))))
+
+
+(test-judgement (proc (comp (pre (get (p1 X) n) (pre (put (p1 123) n) nil))
+			    (pre (qry (p1 X) n) (pre (get (p1 234) n) nil))) P α)
+		(P α)
+		((comp
+		  (pre (get (p1 X) n) (pre (put (p1 123) n) nil))
+		  (pre (get (p1 234) n) nil))
+		 (comp ○ (qry (p1 X) n)))
+		((comp
+		  (pre (get (p1 X) n) (pre (put (p1 123) n) nil))
+		  (pre (qry (p1 X) n) (pre (get (p1 234) n) nil)))
+		 (comp ○ ○))
+		((comp
+		  (pre (get (p1 X) n) (pre (put (p1 123) n) nil))
+		  (pre (qry (p1 X) n) (pre (get (p1 234) n) nil)))
+		 ○)
+		((comp (pre (put (p1 123) n) nil) (pre (get (p1 234) n) nil))
+		 (comp (get (p1 X) n) (qry (p1 X) n)))
+		((comp
+		  (pre (put (p1 123) n) nil)
+		  (pre (qry (p1 X) n) (pre (get (p1 234) n) nil)))
+		 (comp (get (p1 X) n) ○)))

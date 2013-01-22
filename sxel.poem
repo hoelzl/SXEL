@@ -6,7 +6,7 @@
 	 template-vars template-var->sxel-var sxel-vars-from-template
 	 subst subst-var subst-vars
 	 bv
-	 proc)
+	 ↓)
 
 (define-language sxel
   ;; Processes
@@ -29,7 +29,7 @@
   (Π   ::= (variable-prefix Π))
   ;; Names
   (n   ::= (variable-prefix n))
-  ;; Process variables
+  ;; ↓ess variables
   (X   ::= (variable-prefix X) (variable-prefix Y) (variable-prefix Z))
   ;; Variables for names
   (x   ::= (variable-prefix x) (variable-prefix y) (variable-prefix z))
@@ -115,25 +115,24 @@
   ((no-shared-bound-variables α β) #f))
 
 (define-judgment-form sxel
-  #:mode (proc I O O)
-  #:contract (proc P P α)
-  ((proc (pre a P) P a)    prefix)
+  #:mode (↓ I O O)
+  #:contract (↓ P P α)
+  ((↓ (pre a P) P a)    prefix)
 
-  ((proc P P ○)    no-op)
+  ((↓ P P ○)    no-op)
 
-  ((proc P_1 P_2 α)
+  ((↓ P_1 P_2 α)
    -----------------------    +-left
-   (proc (+ P_1 Q) P_2 α))
+   (↓ (+ P_1 Q) P_2 α))
 
-  ((proc Q_1 Q_2 α)
+  ((↓ Q_1 Q_2 α)
    -----------------------   --left
-   (proc (+ P Q_1) Q_2 α))
+   (↓ (+ P Q_1) Q_2 α))
 
   ;; Substitution is still missing, therefore no A(...)
 
-  ((proc P_1 P_2 α) (proc Q_1 Q_2 β)
+  ((↓ P_1 P_2 α) (↓ Q_1 Q_2 β)
    ;; This side condition is never activated?
-   (side-condition (begin (display "Evaluating side condition")
-			  (null? (intersection α β))))
+   (side-condition (no-shared-bound-variables α β))
    ----------------------------------------------   comp
-   (proc (comp P_1 Q_1) (comp P_2 Q_2) (comp α β))))
+   (↓ (comp P_1 Q_1) (comp P_2 Q_2) (comp α β))))

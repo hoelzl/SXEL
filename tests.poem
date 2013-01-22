@@ -8,12 +8,12 @@
 
 (define-syntax-rule (test-match nonterminal term-exp)
   (if (redex-match? sxel nonterminal (term term-exp))
-   (let* ((m (redex-match sxel nonterminal (term term-exp)))
-	  (b (match-bindings (first m))))
-     (test-equal (length b) 1)
-     (test-equal (bind-exp (first b)) 'term-exp))
-   ;; Generate an error message
-   (test-equal 'term-exp 'no-match-found)))
+      (let* ((m (redex-match sxel nonterminal (term term-exp)))
+	     (b (match-bindings (first m))))
+	(test-equal (length b) 1)
+	(test-equal (bind-exp (first b)) 'term-exp))
+      ;; Generate an error message
+      (test-equal 'term-exp 'no-match-found)))
 
 (define-syntax-rule (test-failed-match nonterminal term-exp)
   (test-equal (redex-match? sxel nonterminal (term term-exp)) #f))
@@ -149,12 +149,12 @@
  (term (bv (pre (get (?x ?Y z) n) (pre (get (x1 Y1 ?z1) n) nil))))
  '(x Y z1))
 
-;;; Tests for the `proc' Judgement Form
+;;; Tests for the `↓' Judgement Form
 ;;; ===================================
 
 (test-equal
  (judgment-holds
-  (proc nil P α)
+  (↓ nil P α)
   (P α))
  '((nil ○)))
 
@@ -177,14 +177,14 @@
      (let ((result (judgment-holds test-form value-form)))
        (pretty-display result) (newline)))))
 
-(test-judgement (proc (pre (get (X) n) nil) P α) 
+(test-judgement (↓ (pre (get (X) n) nil) P α) 
 		(P α)
 		((pre (get (X) n) nil) ○)
 		(nil (get (X) n)))
 
 
-(test-judgement (proc (+ (pre (get (p1 X) n) nil)
-			  (pre (get (p2 X) n) nil)) P α) 
+(test-judgement (↓ (+ (pre (get (p1 X) n) nil)
+		      (pre (get (p2 X) n) nil)) P α) 
 		(P α)
 		((+ (pre (get (p1 X) n) nil)
 		    (pre (get (p2 X) n) nil)) ○)
@@ -193,8 +193,8 @@
 		(nil (get (p1 X) n))
 		(nil (get (p2 X) n)))
 
-(test-judgement (proc (comp (pre (get (p1 X) n) nil)
-			    (pre (get (p2 X) n) nil)) P α) 
+(test-judgement (↓ (comp (pre (get (p1 X) n) nil)
+			 (pre (get (p2 X) n) nil)) P α) 
 		(P α)
 		((comp (pre (get (p1 X) n) nil) (pre (get (p2 X) n) nil)) (comp ○ ○))
 		((comp (pre (get (p1 X) n) nil) (pre (get (p2 X) n) nil)) ○)
@@ -203,8 +203,8 @@
 		((comp nil nil) (comp (get (p1 X) n) (get (p2 X) n))))
 
 
-(test-judgement (proc (comp (pre (get (p1 X) n) (pre (put (p1 123) n) nil))
-			    (pre (qry (p1 X) n) (pre (get (p1 234) n) nil))) P α)
+(test-judgement (↓ (comp (pre (get (p1 X) n) (pre (put (p1 123) n) nil))
+			 (pre (qry (p1 X) n) (pre (get (p1 234) n) nil))) P α)
 		(P α)
 		((comp
 		  (pre (get (p1 X) n) (pre (put (p1 123) n) nil))
@@ -225,8 +225,8 @@
 		  (pre (qry (p1 X) n) (pre (get (p1 234) n) nil)))
 		 (comp (get (p1 X) n) ○)))
 
-(test-judgement (proc (comp (pre (get (p1 ?X) n) (pre (put (p1 123) n) nil))
-			    (pre (qry (p1 ?X) n) (pre (get (p1 234) n) nil))) P α)
+(test-judgement (↓ (comp (pre (get (p1 ?X) n) (pre (put (p1 123) n) nil))
+			 (pre (qry (p1 ?X) n) (pre (get (p1 234) n) nil))) P α)
 		(P α)
 		((comp 
 		  (pre (get (p1 ?X) n) (pre (put (p1 123) n) nil))
